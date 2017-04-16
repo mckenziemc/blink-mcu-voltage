@@ -4,15 +4,38 @@
 // input to the ADC; the (analog) supply voltage can be determined from the resulting ratio.
 
 
-// tested on Sparkfun's RedBoard
+/* tested on:
+SainSmart's clone of the Arduino Uno
+Sparkfun's RedBoard
+*/
 
-// FIXME: require ATmega328
+// FIXME: require ATmega328 (__AVR_ATmega328P__)
 // TODO: add other microcontrollers
 
-const float bandgap_voltage = 1.1;  // nominally 1.1V, but may vary 
+const float bandgap_voltage = 1.1;  // nominally 1.1V, but may vary
+
+// blinking parameters; durations in ms
+
+// duration to light the LED
+const unsigned ON_TIME = 375;
+
+// time between blinks within one symbol
+const unsigned INTRA_SYMBOL_TIME = 375;
+
+// special handling of 0
+const unsigned ZERO_ON_TIME = ON_TIME/4;
+const unsigned ZERO_OFF_TIME = ON_TIME - ZERO_ON_TIME;
+
+// time between symbols
+const unsigned INTER_SYMBOL_TIME = 1500;
+
+// minimum time between messages
+const unsigned INTER_MESSAGE_TIME = 3000;
 
 
 void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
+  
   Serial.begin(9600);
 
   // collect and discard the first reading (expected to be erroneous)
@@ -38,15 +61,51 @@ void loop() {
   Serial.print("voltage (code): ");
   Serial.println(voltage_code);
 
-  // delay for some time before getting another reading
+  // delay for a short time so the blink of the TX light doesn't 
+  // distract from reading the output LED.
+  delay(500);
+  
+  blink_unsigned(voltage_code);
+  
+  // delay for some more time before getting another reading
   delay(4000);
 
   Serial.println();
 }
 
 
-// the following is derived from Arduino's analogRead code in 
-// wiring_analog.c, which is licensed under the GNU LGPL v2.1.
+void blink_unsigned(unsigned val) {
+  String string = String(val);
+
+  for (int i = 0; i < string.length(); i++) {
+    byte digit = string.charAt(i) - 48;
+    blink_digit(digit);
+
+    delay(INTER_SYMBOL_TIME);
+  }
+}
+
+
+void blink_digit(byte digit) {
+  if (digit == 0) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(ZERO_ON_TIME);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(ZERO_OFF_TIME);
+    delay(INTRA_SYMBOL_TIME);
+  } else {
+    for (int i = 0; i < digit; i++) {
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(ON_TIME);
+      digitalWrite(LED_BUILTIN, LOW);
+      delay(INTRA_SYMBOL_TIME);
+    }
+  }
+}
+
+
+// the following is derived from Arduino's analogRead implementation 
+// in wiring_analog.c, which is licensed under the GNU LGPL v2.1.
 unsigned read_bandgap() {
   // WARNING: requires no conflicting external AREF
   
