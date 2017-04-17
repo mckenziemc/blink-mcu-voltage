@@ -4,15 +4,26 @@
 // input to the ADC; the (analog) supply voltage can be determined from the resulting ratio.
 
 
-/* tested on:
-SainSmart's clone of the Arduino Uno
-Sparkfun's RedBoard
+/* 
+  supported microcontrollers:
+  ATmega328P
+  ATmega32U4
+
+  boards tested:
+  SainSmart's clone of the Arduino Uno
+  Sparkfun RedBoard
+  Pololu A-Star Prime SV
 */
 
-// FIXME: require ATmega328 (__AVR_ATmega328P__)
-// TODO: add other microcontrollers
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega32U4__)
+// microcontroller is supported
+#else
+#error ERROR unsupported or unrecognized CPU
+#endif
 
 const float bandgap_voltage = 1.1;  // nominally 1.1V, but may vary
+// NOTE: while the ATmega32U4 features a 2.56 voltage reference, 
+// the ADC input options only include the 1.1V bandgap.
 
 // blinking parameters; durations in ms
 
@@ -111,7 +122,15 @@ unsigned read_bandgap() {
   
   uint8_t low, high;
 
+#if defined(__AVR_ATmega328P__)
   ADMUX = 78; // Vcc reference, and measure internal bandgap
+#elif defined(__AVR_ATmega32U4__)
+  ADMUX = 94;
+  // clear MUX5
+  ADCSRB &= ~(_BV(MUX5));
+#else
+  // FIXME: unknown microcontroller
+#endif
 
   // start the conversion by setting the ADSC bit of ADCSRA
   ADCSRA |= _BV(ADSC);
